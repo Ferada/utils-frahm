@@ -7,14 +7,14 @@
 	   #:conc
 	   #:make-locked-deque #:locked-deque-emptyp
 	   #:enqueue
-	   #:dequeue #:dequeue-all #:dequeue-match
-	   #:dequeue-wait #:dequeue-wait-all #:dequeue-wait-match
+	   #:dequeue #:dequeue-all #:dequeue-if
+	   #:dequeue-wait #:dequeue-wait-all #:dequeue-wait-if
 	   #:make-rwlock #:with-rwlock-held #:with-rwlock-held*))
 
 (in-package #:utils-frahm)
 
 (defmacro λ (args &rest def)
-  `(lambda ,args ,@def))
+  `(lambda ,args ,.def))
 
 (defun conc (&rest strings)
   (apply #'concatenate 'string strings))
@@ -198,68 +198,3 @@ If you really want to test for T, use (T) as Key."
 				(cons (first expr))
 				(t `#',(first expr)))
 		     ,@(rest expr)))))
-
-;;; history mechanism
-
-(defun history-augment-setq (form fun)
-  (if (and (listp form)
-	   (not (null form)))
-      (let ((augmented-form (cons (car form) (mapcar (lambda (form) (history-augment-setq form fun))
-						     (cdr form)))))
-	(if (eq (car augmented-form) 'SETQ)
-	    (funcall fun (cadr augmented-form) (caddr augmented-form))
-	    augmented-form))
-      form))
-
-(defun history-variables (form)
-  (let ((vars))
-    (sb-cltl2:macroexpand-all
-     `(macrolet ((max/hist (var)
-		   (funcall ,(lambda (x) (pushnew x vars)) var)
-		   var))
-	,@form))
-    vars))
-
-(defmacro! with-hist (&body body)
-  ;; identify invocations of history macros
-  ;; summarize the referenced variables (whats with symbol macros?)
-  ;; add accumulator code
-  (let ((vars (mapcar (lambda (var) (cons var (gensym))) (history-variables body))))
-    `(let (,@(mapcar (lambda (var) `(,(cdr var) ,(car var))) vars))
-       (macrolet ((max/hist (var)
-		    (cdr (assoc var ',vars))))
-	 ,@(mapcar (lambda (form)
-		     (format T "augmenting part ~A~%" form)
-		     (history-augment-setq (sb-cltl2:macroexpand-all form)
-					   (lambda (var expr)
-					     (aif (assoc var vars)
-						  `(let ((,g!foo ,expr))
-						     (setq ,(cdr it) (max ,(cdr it) ,g!foo)
-							   ,var ,g!foo))
-						  `(setq ,var ,expr)))))
-		   body)))))
-
-(defvar test-1
-  '(defun test-1 (&optional (list '(1 2 3 4 5 6)))
-    (let (x)
-      (with-hist
-	(loop for i in list
-	   do (setq x i))
-	(format T "max of i is ~A~%" (max/hist x))))))
-
-(defun test-1 (&optional (list '(1 2 3 4 5 6)))
-  (let ((x (car list)) (y (- (car list))))
-    (with-hist
-      (loop for i in list
-	 do (setq x i)
-	 do (setq y (- i)))
-      (format T "max of i is ~A~%" (max/hist x))
-      (format T "max of (- i) is ~A~%" (max/hist y)))))
-
-;; TODO: make this extensible using a registry of expanders
-;; TODO: wanted is value, location, timestamp
-
-;; operators
-;; value: max, list
-;; location: times
-;; timestamp: when

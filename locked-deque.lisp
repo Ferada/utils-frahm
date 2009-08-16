@@ -100,21 +100,21 @@ concurrent access using a lock and a condition."
 	      (rplacd deque prelast)))
 	(rplaca deque (delete item car :test #'eq)))))
 
-(defun %dequeue-match (locked-deque test)
+(defun %dequeue-if (locked-deque test)
   (let ((deque (locked-deque-deque locked-deque)))
     (dolist (item (car deque))
       (when (funcall test item)
 	(%dequeue-item NIL item deque)
 	(return item)))))
 
-(defun dequeue-match (locked-deque test)
+(defun dequeue-if (locked-deque test)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
-    (%dequeue-match locked-deque test)))
+    (%dequeue-if locked-deque test)))
 
-(defun dequeue-wait-match (locked-deque test)
+(defun dequeue-wait-if (locked-deque test)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (loop
-      (awhen (%dequeue-match locked-deque test)
+      (awhen (%dequeue-if locked-deque test)
 	(return it))
       (bt:condition-wait (locked-deque-filled locked-deque)
 			 (locked-deque-lock locked-deque)))))
