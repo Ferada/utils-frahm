@@ -203,12 +203,13 @@ If you really want to test for T, use (T) as Key."
   `(let ((it ,form))
      ,.body))
 
-(defun replace-bindings (bindings body)
-  (aif (rassoc body bindings :key #'car :test #'eq)
-       (car it)
-       (if (atom body)
-	   body
-	   (mapcar (lambda (x) (replace-bindings bindings x)) body))))
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun replace-bindings (bindings body)
+    (aif (rassoc body bindings :key #'car :test #'eq)
+	 (car it)
+	 (if (atom body)
+	     body
+	     (mapcar (lambda (x) (replace-bindings bindings x)) body)))))
 
 (defmacro rlet (bindings &body body)
   "(reader-let)
