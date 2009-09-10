@@ -52,11 +52,18 @@ concurrent access using a lock and a condition."
 	  (unless next
 	    (rplacd deque next)))))))
 
+(defun notify-filled (locked-deque)
+  (bt:condition-notify (locked-deque-filled locked-deque)))
+
+(defun wait-filled (locked-deque)
+  (bt:condition-wait (locked-deque-filled locked-deque)
+		     (locked-deque-lock locked-deque)))
+
 (defun enqueue (locked-deque item)
   "Adds a item to the back of the deque and notifies waiting readers."
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (%enqueue locked-deque item)
-    (bt:condition-notify (locked-deque-filled locked-deque))))
+    (notify-filled)))
 
 (defun dequeue (locked-deque)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
@@ -66,10 +73,8 @@ concurrent access using a lock and a condition."
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (aif (%dequeue locked-deque)
 	 it
-	 (progn
-	   (bt:condition-wait (locked-deque-filled locked-deque)
-			      (locked-deque-lock locked-deque))
-	   (%dequeue locked-deque)))))
+	 (progn (wait-filled)
+		(%dequeue locked-deque)))))
 
 (defun %dequeue-all (locked-deque)
   (let ((deque (locked-deque-deque locked-deque)))
@@ -85,10 +90,8 @@ concurrent access using a lock and a condition."
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (aif (%dequeue-all locked-deque)
 	 it
-	 (progn
-	   (bt:condition-wait (locked-deque-filled locked-deque)
-			      (locked-deque-lock locked-deque))
-	   (%dequeue-all locked-deque)))))
+	 (progn (wait-filled)
+		(%dequeue-all locked-deque)))))
 
 (defun %dequeue-item (locked-deque item &optional (deque (locked-deque-deque locked-deque)))
   (let ((car (car deque)))
@@ -116,5 +119,4 @@ concurrent access using a lock and a condition."
     (loop
       (awhen (%dequeue-if locked-deque test)
 	(return it))
-      (bt:condition-wait (locked-deque-filled locked-deque)
-			 (locked-deque-lock locked-deque)))))
+       (wait-filled))))
