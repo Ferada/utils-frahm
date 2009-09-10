@@ -1,15 +1,16 @@
-(in-package #:cl-user)
+(in-package :cl-user)
 
-(defpackage :utils-frahm
-  (:use #:cl #:anaphora)
-  (:export #:defmacro/g! #:defmacro!
-	   #:eqcond #:defvar* #:defconstant*
-	   #:conc
-	   #:make-locked-deque #:locked-deque-emptyp
-	   #:enqueue
-	   #:dequeue #:dequeue-all #:dequeue-if
-	   #:dequeue-wait #:dequeue-wait-all #:dequeue-wait-if
-	   #:make-rwlock #:with-rwlock-held #:with-rwlock-held*))
+(defpackage utils-frahm
+  (:use :cl :anaphora)
+  (:export :defmacro!
+	   :eqcond :defvar* :defconstant*
+	   :alet :rlet
+	   :conc
+	   :make-locked-deque :locked-deque-emptyp
+	   :enqueue
+	   :dequeue :dequeue-all :dequeue-if
+	   :dequeue-wait :dequeue-wait-all :dequeue-wait-if
+	   :make-rwlock :with-rwlock-held :with-rwlock-held*))
 
 (in-package #:utils-frahm)
 
