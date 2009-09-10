@@ -1,4 +1,4 @@
-(in-package #:utils-frahm)
+(in-package :utils-frahm)
 
 (defstruct (locked-deque (:constructor create-locked-deque))
   "A locked deque which allows access to both front and back.  Allows for
@@ -63,7 +63,7 @@ concurrent access using a lock and a condition."
   "Adds a item to the back of the deque and notifies waiting readers."
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (%enqueue locked-deque item)
-    (notify-filled)))
+    (notify-filled locked-deque)))
 
 (defun dequeue (locked-deque)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
@@ -73,7 +73,7 @@ concurrent access using a lock and a condition."
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (aif (%dequeue locked-deque)
 	 it
-	 (progn (wait-filled)
+	 (progn (wait-filled locked-deque)
 		(%dequeue locked-deque)))))
 
 (defun %dequeue-all (locked-deque)
@@ -90,7 +90,7 @@ concurrent access using a lock and a condition."
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (aif (%dequeue-all locked-deque)
 	 it
-	 (progn (wait-filled)
+	 (progn (wait-filled locked-deque)
 		(%dequeue-all locked-deque)))))
 
 (defun %dequeue-item (locked-deque item &optional (deque (locked-deque-deque locked-deque)))
@@ -119,4 +119,31 @@ concurrent access using a lock and a condition."
     (loop
       (awhen (%dequeue-if locked-deque test)
 	(return it))
-       (wait-filled))))
+       (wait-filled locked-deque))))
+
+(defun dequeue-wait-timeout (locked-deque timeout)
+  (bt:with-lock-held ((locked-deque-lock locked-deque))
+    (aif (%dequeue locked-deque)
+	 it
+	 (progn (trivial-timeout:with-timeout (timeout)
+		  (wait-filled locked-deque))
+		(%dequeue locked-deque)))))
+
+(defun dequeue-wait-if-timeout (locked-deque test timeout)
+  (let ((elapsed 0) start)
+    (bt:with-lock-held ((locked-deque-lock locked-deque))
+      (loop
+	 (awhen (%dequeue-if locked-deque test)
+	   (return it))
+	 (setf start (get-universal-time))
+	 (trivial-timeout:with-timeout ((- timeout elapsed))
+	   (wait-filled locked-deque))
+	 (incf elapsed (- (get-universal-time) start))))))
+
+(defun dequeue-wait-all-timeout (locked-deque timeout)
+  (bt:with-lock-held ((locked-deque-lock locked-deque))
+    (aif (%dequeue-all locked-deque)
+	 it
+	 (progn (trivial-timeout:with-timeout (timeout)
+		  (wait-filled locked-deque))
+		(%dequeue-all locked-deque)))))

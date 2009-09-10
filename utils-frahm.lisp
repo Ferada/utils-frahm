@@ -10,6 +10,8 @@
 	   :enqueue
 	   :dequeue :dequeue-all :dequeue-if
 	   :dequeue-wait :dequeue-wait-all :dequeue-wait-if
+	   :dequeue-wait-timeout :dequeue-wait-if-timeout
+	   :dequeue-wait-all-timeout
 	   :make-rwlock :with-rwlock-held :with-rwlock-held*))
 
 (in-package #:utils-frahm)
