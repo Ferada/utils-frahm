@@ -198,3 +198,25 @@ If you really want to test for T, use (T) as Key."
 				(cons (first expr))
 				(t `#',(first expr)))
 		     ,@(rest expr)))))
+
+(defmacro alet (form &body body)
+  `(let ((it ,form))
+     ,.body))
+
+(defun replace-bindings (bindings body)
+  (aif (rassoc body bindings :key #'car :test #'eq)
+       (car it)
+       (if (atom body)
+	   body
+	   (mapcar (lambda (x) (replace-bindings bindings x)) body))))
+
+(defmacro rlet (bindings &body body)
+  "(reader-let)
+(rlet (#1=(list 1 2 3))
+  (append #1# #1#))"
+  (if bindings
+      (let ((bindings (mapcar (lambda (binding) `(,(gensym) ,binding))
+			      bindings)))
+	`(let ,bindings
+	   ,.(replace-bindings bindings body)))
+      `(progn ,.body)))
