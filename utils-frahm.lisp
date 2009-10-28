@@ -1,19 +1,3 @@
-(in-package :cl-user)
-
-(defpackage utils-frahm
-  (:use :cl :anaphora)
-  (:export :defmacro!
-	   :eqcond :defvar* :defconstant*
-	   :alet :rlet
-	   :conc
-	   :make-locked-deque :locked-deque-emptyp
-	   :enqueue
-	   :dequeue :dequeue-all :dequeue-if
-	   :dequeue-wait :dequeue-wait-all :dequeue-wait-if
-	   :dequeue-wait-timeout :dequeue-wait-if-timeout
-	   :dequeue-wait-all-timeout
-	   :make-rwlock :with-rwlock-held :with-rwlock-held*))
-
 (in-package #:utils-frahm)
 
 (defmacro λ (args &rest def)
