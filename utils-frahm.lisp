@@ -117,26 +117,28 @@ If you really want to test for T, use (T) as Key."
 	  `(let (,@newsyms)
 	     ,result)))))
 
-;; (defmacro eqcase (equal keyform &body cases)
-;;   "EQCASE Equal Keyform {({(Key*) | Key} Form*)}*
-;; Evaluates the Forms in the first clause with a Key Equal to the value of
-;; Keyform.  If a singleton key is T then the clause is a default clause.
-;; If you really want to test for T, use (T) as Key."
-;;   (let ((key-sym (gensym)))
-;;     `(let ((,key-sym ,keyform))
-;;        (declare (ignorable ,key-sym))
-;;        (cond
-;; 	 ,@(mapcar #'(lambda (a-case)
-;; 		       (let ((vals (car a-case)) (handler (cdr a-case)))
-;; 			 (if (listp vals)
-;; 			     `((or ,@(mapcar #'(lambda (val) `(funcall ,equal ,key-sym ,val)) vals))
-;; 			       ,@(cdr a-case))
-;; 			     (if (eq vals T)
-;; 				 `(T ,@handler)
-;; 				 `((funcall ,equal ,key-sym ,vals) ,@handler)))))
-;; 		   cases)))))
+#+(or)
+(defmacro eqcase (equal keyform &body cases)
+  "EQCASE Equal Keyform {({(Key*) | Key} Form*)}*
+Evaluates the Forms in the first clause with a Key Equal to the value of
+Keyform.  If a singleton key is T then the clause is a default clause.
+If you really want to test for T, use (T) as Key."
+  (let ((key-sym (gensym)))
+    `(let ((,key-sym ,keyform))
+       (declare (ignorable ,key-sym))
+       (cond
+	 ,@(mapcar #'(lambda (a-case)
+		       (let ((vals (car a-case)) (handler (cdr a-case)))
+			 (if (listp vals)
+			     `((or ,@(mapcar #'(lambda (val) `(funcall ,equal ,key-sym ,val)) vals))
+			       ,@(cdr a-case))
+			     (if (eq vals T)
+				 `(T ,@handler)
+				 `((funcall ,equal ,key-sym ,vals) ,@handler)))))
+		   cases)))))
 
-#+(or)(defmacro with-gensyms ((&rest names) &body body)
+#+(or)
+(defmacro with-gensyms ((&rest names) &body body)
   `(let ,(loop for n in names collect `(,n (gensym)))
      ,@body))
 
@@ -154,15 +156,18 @@ If you really want to test for T, use (T) as Key."
 ;; Compose macro
 ;; Usage: #M(abs /) ==> (lambda (a b) (abs (/ a b)))
 
-#+(or)(defmacro enable-compose-syntax (&optional (dispatch-character #\#) (sub-character #\M))
+#+(or)
+(defmacro enable-compose-syntax (&optional (dispatch-character #\#) (sub-character #\M))
   `(eval-when (:compile-toplevel :execute)
      (setf *readtable* (copy-readtable *readtable*))
      (%enable-compose-reader ,dispatch-character ,sub-character)))
 
-#+(or)(defun %enable-compose-reader (&optional (dispatch-character #\#) (sub-character #\M))
+#+(or)
+(defun %enable-compose-reader (&optional (dispatch-character #\#) (sub-character #\M))
   (set-dispatch-macro-character dispatch-character sub-character #'compose-reader *readtable*))
 
-#+(or)(defun compose-reader (stream sub-character infix-parameter)
+#+(or)
+(defun compose-reader (stream sub-character infix-parameter)
   (when infix-parameter
     (error "#~a does not take an integer infix parameter."
 	   sub-character))
@@ -175,18 +180,19 @@ If you really want to test for T, use (T) as Key."
 
 ;; Curry macro
 ;; Usage: #R(* 3) ==> (lambda (&rest r) (apply #'* 3 r))
-#+(or)(set-dispatch-macro-character
-       #\# #\R (lambda (stream sub-character infix-parameter)
-		 (when infix-parameter
-		   (error "#~a does not take an integer infix parameter."
-			  sub-character))
-		 (let ((expr (read stream t nil t)))
-		   `(alexandria:curry
-		     ,(typecase (first expr)
-				(function (first expr))
-				(cons (first expr))
-				(t `#',(first expr)))
-		     ,@(rest expr)))))
+#+(or)
+(set-dispatch-macro-character
+ #\# #\R (lambda (stream sub-character infix-parameter)
+	   (when infix-parameter
+	     (error "#~a does not take an integer infix parameter."
+		    sub-character))
+	   (let ((expr (read stream t nil t)))
+	     `(alexandria:curry
+	       ,(typecase (first expr)
+			  (function (first expr))
+			  (cons (first expr))
+			  (t `#',(first expr)))
+	       ,@(rest expr)))))
 
 (defmacro alet (form &body body)
   "Binds FORM to anaphoric IT in enclosed BODY."
