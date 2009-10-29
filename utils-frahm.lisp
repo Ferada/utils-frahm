@@ -4,12 +4,14 @@
   `(lambda ,args ,.def))
 
 (defun conc (&rest strings)
+  "Concatenates a number of strings."
   (apply #'concatenate 'string strings))
 
 ;;;; tools from let over lambda
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defun flatten (x)
+    "Flattens a CONS tree."
     (labels ((rec (x acc)
 	       (cond ((null x) acc)
 		     ((atom x) (cons x acc))
@@ -134,7 +136,7 @@ If you really want to test for T, use (T) as Key."
 ;; 				 `((funcall ,equal ,key-sym ,vals) ,@handler)))))
 ;; 		   cases)))))
 
-(defmacro with-gensyms ((&rest names) &body body)
+#+(or)(defmacro with-gensyms ((&rest names) &body body)
   `(let ,(loop for n in names collect `(,n (gensym)))
      ,@body))
 
@@ -152,15 +154,15 @@ If you really want to test for T, use (T) as Key."
 ;; Compose macro
 ;; Usage: #M(abs /) ==> (lambda (a b) (abs (/ a b)))
 
-(defmacro enable-compose-syntax (&optional (dispatch-character #\#) (sub-character #\M))
+#+(or)(defmacro enable-compose-syntax (&optional (dispatch-character #\#) (sub-character #\M))
   `(eval-when (:compile-toplevel :execute)
      (setf *readtable* (copy-readtable *readtable*))
      (%enable-compose-reader ,dispatch-character ,sub-character)))
 
-(defun %enable-compose-reader (&optional (dispatch-character #\#) (sub-character #\M))
+#+(or)(defun %enable-compose-reader (&optional (dispatch-character #\#) (sub-character #\M))
   (set-dispatch-macro-character dispatch-character sub-character #'compose-reader *readtable*))
 
-(defun compose-reader (stream sub-character infix-parameter)
+#+(or)(defun compose-reader (stream sub-character infix-parameter)
   (when infix-parameter
     (error "#~a does not take an integer infix parameter."
 	   sub-character))
@@ -187,6 +189,7 @@ If you really want to test for T, use (T) as Key."
 		     ,@(rest expr)))))
 
 (defmacro alet (form &body body)
+  "Binds FORM to anaphoric IT in enclosed BODY."
   `(let ((it ,form))
      ,.body))
 

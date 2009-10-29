@@ -2,7 +2,8 @@
 
 (defpackage utils-frahm
   (:use #:cl #:anaphora)
-  (:export #:defmacro!
+  (:export #:it
+	   #:defmacro!
 	   #:eqcond #:defvar* #:defconstant*
 	   #:alet #:rlet
 	   #:conc
