@@ -217,3 +217,27 @@ If you really want to test for T, use (T) as Key."
 	`(let ,bindings
 	   ,.(replace-bindings bindings body)))
       `(progn ,.body)))
+
+;;; TODO: doesn't work as expected, so needs more thought
+
+;; (defmacro with-symbols-from (package (&rest symbols) &body body)
+;;   "Temporarily using external symbols from another package without
+;; actually importing them into the current one."
+;;   (setf package (find-package package))
+;;   (when (eq package *package*)
+;;     ;; why should we import from ourselves?
+;;     (return-from with-symbols-from body))
+;;   (let (macrolets)
+;;     (dolist (symbol symbols)
+;;       (multiple-value-bind (import visible)
+;; 	  (find-symbol (symbol-name symbol) package)
+;; 	(ecase visible
+;; 	  ((nil)
+;; 	   (error "symbol ~A is not present in package ~A"
+;; 		  symbol package))
+;; 	  ((:internal :inherited)
+;; 	   (error "symbol ~A is internal in package ~A"
+;; 		  import package))
+;; 	  ((:external) (push `(,symbol ,import) macrolets)))))
+;;     `(symbol-macrolet ,(nreverse macrolets)
+;;        ,.body)))
