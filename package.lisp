@@ -17,7 +17,10 @@
 	   #:dequeue-wait #:dequeue-wait-all #:dequeue-wait-if
 	   #:dequeue-wait-timeout #:dequeue-wait-if-timeout
 	   #:dequeue-wait-all-timeout
+
+	   ;;; rwlock.lisp
 	   #:make-rwlock #:with-rwlock-held #:with-rwlock-held*
+	   #:downgrade #:upgrade
 
 	   ;;; html.lisp
 	   #:+dtd-xhtml-11-public+ #:+dtd-xhtml-11-system+

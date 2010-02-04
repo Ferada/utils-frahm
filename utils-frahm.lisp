@@ -1,7 +1,7 @@
 (in-package #:utils-frahm)
 
-(defmacro λ (args &rest def)
-  `(lambda ,args ,.def))
+;; (defmacro λ (args &rest def)
+;;   `(lambda ,args ,.def))
 
 (defun conc (&rest strings)
   "Concatenates a number of strings."
@@ -72,25 +72,63 @@
   (defun o!-symbol-to-g!-symbol (s)
     (symb "G!" (subseq (symbol-name s) 2))))
 
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun !-symbol-p (s)
+    (and (symbolp s)
+	 (> (length (symbol-name s)) 2)
+	 (string= (symbol-name s)
+		  "!"
+		  :start1 1
+		  :end1 2))))
+
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun any!-symbol-p (s &rest prefixes)
+    (and (symbolp s)
+	 (> (length (symbol-name s)) 2)
+	 (let* ((name (symbol-name s))
+		(c0 (aref name 0)))
+	   (and (char= #\! (aref name 1))
+		(some (lambda (prefix)
+			(char= c0 prefix))
+		      prefixes))))))
+
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun !-symbol-to-symbol (s)
+    (symb (subseq (symbol-name s) 2))))
+
+(eval-when (:load-toplevel :compile-toplevel :execute)
+  (defun recursive-!-symbol-to-symbol (list)
+    (mapcar (lambda (x)
+	      (cond
+		((and (symbolp x) (any!-symbol-p x #\O #\G))
+		 (!-symbol-to-symbol x))
+		((listp x) (recursive-!-symbol-to-symbol x))
+		(T x)))
+	    list)))
+
+;; 20100203 - fixed nested lambda list arguments
+;; 20100115 - now removing x!-patterns from argument names
 ;; 20090730 - added docstring handling
 ;; 20090515 - added flatten in front of args
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (defmacro defmacro! (name args &rest body)
+    "Defines a macro like the standard DEFMACRO except renaming all symbols
+beginning with "
     (let* ((os (remove-if-not #'o!-symbol-p (flatten args)))
 	   (gs (mapcar #'o!-symbol-to-g!-symbol os))
 	   (docstringp (stringp (car body)))
 	   (prebody (when docstringp
 		      (list (car body))))
 	   (body (if docstringp (cdr body) body)))
-      `(defmacro/g! ,name ,args
-	 ,@prebody
-	 `(let ,(mapcar #'list (list ,@gs) (list ,@os))
-	    ,(progn ,@body))))))
+      `(defmacro/g! ,name ,(recursive-!-symbol-to-symbol args)
+	 ,.prebody
+	 `(let ,(mapcar #'list (list ,@gs) (list ,@(mapcar #'!-symbol-to-symbol os)))
+	    ,(progn ,.body))))))
 
 ;;;; my own tools
 
 (defmacro! eqcond (o!equal o!keyform &body cases)
-  "EQCASE Equal Keyform {({(Key*) | Key} Form*)}*
+  "EQCOND Equal Keyform {({(Key*) | Key} Form*)}*
 Evaluates the Forms in the first clause with a Key Equal to the value of
 Keyform.  If a singleton key is T then the clause is a default clause.
 If you really want to test for T, use (T) as Key."

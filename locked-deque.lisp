@@ -1,4 +1,4 @@
-(in-package :utils-frahm)
+(in-package #:utils-frahm)
 
 (defstruct (locked-deque (:constructor create-locked-deque))
   "A locked deque which allows access to both front and back.  Allows for
