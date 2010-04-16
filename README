@@ -1,5 +1,15 @@
 <!-- -*- mode: markdown; mode: auto-fill; fill-column: 72; -*- -->
 
+# Overview
+
+A utility package with functions and macros thrown together with
+different purposes etc.
+
+ASDF definitions are available with the systems `UTILS-FRAHM-COMMON` and
+`UTILS-FRAHM-THREADED` (which is only tested with the locked queue
+implementation).  The package is `UTILS-FRAHM` and depends on
+`ANAPHORA`.
+
 # My Own Tools
 
 This is a collection of some more or less useful tools in general
@@ -16,7 +26,7 @@ unused clutter, that is).
 with a documentation string; `DEFCONSTANT*` is `DEFCONSTANT`, except it
 behaves sane if a constant of that name is already bound.
 
-## `DO-DEFINE-MAPPER`, `DO-MAPCAR`, &hellip;
+## `DO-MAPPER`, `DO-MAPCAR`, &hellip;
 
 `DO-MAPCAR` adapts the `MAPCAR` function to accept a function body
 instead of a `LAMBDA` form.  It accepts multiple lists (as does
@@ -31,7 +41,7 @@ actually present syntax `(QUOTE (1 2 3))`).
     => ((1 . 4) (2 . 5) (3 . 6))
 
 New macros of this kind may be defined in a similar way using an
-expansion of `DEFINE-DO-MAPPER` while providing a mapping function
+expansion of `DO-MAPPER` while providing a mapping function
 designator.  For example the following use of `DO-MAPPER` simply
 prints all arguments to the mapping function:
 
@@ -40,6 +50,20 @@ prints all arguments to the mapping function:
         list)
     (#<FUNCTION (LAMBDA #) {1003908DB9}> (1 2 3))
     => NIL
+
+## `DEFINE-MAPCAR/VALUES-N`
+
+This macro is rather big and currently defines a bunch of functions to
+run `MAPCAR` while accumulating multiple return values.  The main
+defined function `MAPCAR/VALUES` accumulates as many return values as
+lists where supplied, `MAPCAR/VALUES-N` lets you specify the number of
+accumulated return values.  There is no general case to accumulate an
+unspecified number of values, since this would imply rather costly list
+operations which I didn't want to include here.
+
+It remains open to testing if this construct is useful enough to justify
+using it instead of expanding to `cl-iterate`, but it was a good
+exercise in macro writing nevertheless.
 
 ## `EQCASE`, `EQCOND`
 
@@ -71,8 +95,9 @@ works:
 
 These are various tools from the book Let Over Lambda by Doug Hoyte,
 slightly edited to correctly handle some minor aspects, for example
-docstrings and declarations.  For the original source code go to
-&hellip;.
+docstrings and declarations and enhanced for better readability of the
+generated code.  For the original source code go to the
+[Let Over Lambda](http://letoverlambda.com/) homepage.
 
 ## `DEFMACRO!`
 
@@ -104,7 +129,7 @@ macro argument.
 Additionally, the wrapped body of the macro is contained in a named
 block like the name of the defined macro.  If necessary, an additional
 block with the prefix `OUTER-` prior to the original macro name is
-established if you really want to exit to confinement of the extra
+established if you really want to exit the confinement of the extra
 constructs.
 
 If available, the second returned value is an association list, which
