@@ -60,7 +60,7 @@
      (,(ecase mode
 	 (:read 'lock-read)
 	 (:write 'lock-write)) ,g!place)
-     (unwind-protect (progn ,@body)
+     (unwind-protect (progn ,.body)
        (,(ecase mode
 	   (:read 'unlock-read)
 	   (:write 'unlock-write)) ,g!place))))
@@ -76,7 +76,7 @@
 		(downgrade ()
 		  `(progn (setq ,',g!writer NIL)
 			  (lock-downgrade ,',g!place))))
-       (unwind-protect (progn ,@body)
+       (unwind-protect (progn ,.body)
 	 (if ,g!writer
 	     (unlock-write ,g!place)
 	     (unlock-read ,g!place))))))

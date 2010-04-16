@@ -1,0 +1,114 @@
+<!-- -*- mode: markdown; mode: auto-fill; fill-column: 72; -*- -->
+
+# My Own Tools
+
+This is a collection of some more or less useful tools in general
+programming and macro writing.
+
+Regarding macro programming I tried to handle border cases like empty
+expansions nicely so the resulting macroexpansion will probably look a
+bit closer to the hand-written equivalent (less empty `LET`s and other
+unused clutter, that is).
+
+## `DEFVAR*`, `DEFCONSTANT*`
+
+`DEFVAR*` behaves like `DEFVAR` to create a new _uninitialised_ variable
+with a documentation string; `DEFCONSTANT*` is `DEFCONSTANT`, except it
+behaves sane if a constant of that name is already bound.
+
+## `DO-DEFINE-MAPPER`, `DO-MAPCAR`, &hellip;
+
+`DO-MAPCAR` adapts the `MAPCAR` function to accept a function body
+instead of a `LAMBDA` form.  It accepts multiple lists (as does
+`MAPCAR`) and binds each element of each list to a user defined symbol
+or to the argument symbol.  A user defined symbol is defined via syntax
+`(SYMBOL LIST)`, therefore a quoted list may not be used (because of the
+actually present syntax `(QUOTE (1 2 3))`).
+
+    * (let ((list '(1 2 3)))
+        (do-mapcar (list (another '(4 5 6)))
+          (cons list another)))
+    => ((1 . 4) (2 . 5) (3 . 6))
+
+New macros of this kind may be defined in a similar way using an
+expansion of `DEFINE-DO-MAPPER` while providing a mapping function
+designator.  For example the following use of `DO-MAPPER` simply
+prints all arguments to the mapping function:
+
+    * (do-mapper (lambda (&rest args) (format T "~S~%" args))
+          ((list '(1 2 3)))
+        list)
+    (#<FUNCTION (LAMBDA #) {1003908DB9}> (1 2 3))
+    => NIL
+
+## `EQCASE`, `EQCOND`
+
+This macros are a generalisation of `CASE` to accept a function designator
+and using that to compare the cases with a keyform.
+
+    * (eqcase '= 2
+        (2 T)
+        (T NIL))
+    => T
+    * (eqcase #'string-equal "foo"
+        (("foo" "bar") 'foobar)
+        (T 'actual-t)
+        (T 'unknown))
+    => FOOBAR
+
+The semantics match those of `CASE`.  Also, they expand to `COND` and
+try to remove some unnecessary forms.
+
+`EQCOND` just doesn't quote its keys, so something like the following
+works:
+
+    * (let ((foo 42))
+        (eqcond '= 42
+          (foo T)))
+    => T
+
+# Let Over Lambda tools
+
+These are various tools from the book Let Over Lambda by Doug Hoyte,
+slightly edited to correctly handle some minor aspects, for example
+docstrings and declarations.  For the original source code go to
+&hellip;.
+
+## `DEFMACRO!`
+
+`DEFMACRO!` provides two nice additions to macro writers: generating
+gensyms and ensuring once-only evaluation using a special and probably
+unused symbol naming convention, namely `G!FOO` for a new gensym and
+`O!FOO` for automatic once-only evaluation of the macro argument of the
+stripped name.  It is used to remove unnessecary clutter from macros
+while giving each function a distinct visual look.
+
+    * (defmacro! foo (o!x y)
+        `(list ',g!x ,g!x ,x ,y))
+    * (foo (list 1 2 3) 42)
+    => (#:X1789 (1 2 3) (1 2 3) 42)
+
+The expansion of `FOO` probably gives a better idea what happens here:
+
+    (LET ((#:X1790 (LIST 1 2 3)))
+      (DECLARE (IGNORABLE #:X1790))
+      (LIST '#:X1790 #:X1790 (LIST 1 2 3) 42))
+
+For every evaluated argument via `O!FOO` every use of a `G!FOO` symbol
+in the body of the macro refers to a shared `LET`-bound variable.  Since
+the argument list of the macro is rewritten, the use of a `O!FOO` symbol
+in the body is an error and won't work.  As visible above the use of the
+actual argument (here `X`) isn't forbidden and refers to the unedited
+macro argument.
+
+Additionally, the wrapped body of the macro is contained in a named
+block like the name of the defined macro.  If necessary, an additional
+block with the prefix `OUTER-` prior to the original macro name is
+established if you really want to exit to confinement of the extra
+constructs.
+
+If available, the second returned value is an association list, which
+may toggle the usage of the `LET`-bindings if they're not needed (via
+`:LET-P`), the other disables the `(DECLARE (IGNORABLE))` declarations
+for `LET`-bound variables (via `:IGNORABLE-P`), more a stylistic
+addition if the variables are guaranteed to be used every time.

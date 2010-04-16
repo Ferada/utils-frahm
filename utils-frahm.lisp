@@ -3,191 +3,64 @@
 ;; (defmacro λ (args &rest def)
 ;;   `(lambda ,args ,.def))
 
-(defun conc (&rest strings)
-  "Concatenates a number of strings."
-  (apply #'concatenate 'string strings))
-
-;;;; tools from let over lambda
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun flatten (x)
-    "Flattens a CONS tree."
-    (labels ((rec (x acc)
-	       (cond ((null x) acc)
-		     ((atom x) (cons x acc))
-		     (t (rec
-			 (car x)
-			 (rec (cdr x) acc))))))
-      (rec x nil))))
-
-;;; defmacro* helpers
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun mkstr (&rest args)
-    (with-output-to-string (s)
-      (dolist (a args) (princ a s)))))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun symb (&rest args)
-    (values (intern (apply #'mkstr args)))))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun g!-symbol-p (s)
-    (and (symbolp s)
-	 (> (length (symbol-name s)) 2)
-	 (string= (symbol-name s)
-		  "G!"
-		  :start1 0
-		  :end1 2))))
-
-;; 20090730 - added docstring handling
-(defmacro defmacro/g! (name args &rest body)
-  (let* ((syms (remove-duplicates
-		(remove-if-not #'g!-symbol-p
-			       (flatten body))))
-	 (docstringp (stringp (car body)))
-	 (prebody (when docstringp
-		    (list (car body))))
-	 (body (if docstringp (cdr body) body)))
-    `(defmacro ,name ,args
-       ,@prebody
-       (let ,(mapcar
-	      (lambda (s)
-		`(,s (gensym ,(subseq
-			       (symbol-name s)
-			       2))))
-	      syms)
-         ,@body))))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun o!-symbol-p (s)
-    (and (symbolp s)
-	 (> (length (symbol-name s)) 2)
-	 (string= (symbol-name s)
-		  "O!"
-		  :start1 0
-		  :end1 2))))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun o!-symbol-to-g!-symbol (s)
-    (symb "G!" (subseq (symbol-name s) 2))))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun !-symbol-p (s)
-    (and (symbolp s)
-	 (> (length (symbol-name s)) 2)
-	 (string= (symbol-name s)
-		  "!"
-		  :start1 1
-		  :end1 2))))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun any!-symbol-p (s &rest prefixes)
-    (and (symbolp s)
-	 (> (length (symbol-name s)) 2)
-	 (let* ((name (symbol-name s))
-		(c0 (aref name 0)))
-	   (and (char= #\! (aref name 1))
-		(some (lambda (prefix)
-			(char= c0 prefix))
-		      prefixes))))))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun !-symbol-to-symbol (s)
-    (symb (subseq (symbol-name s) 2))))
-
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun recursive-!-symbol-to-symbol (list)
-    (mapcar (lambda (x)
-	      (cond
-		((and (symbolp x) (any!-symbol-p x #\O #\G))
-		 (!-symbol-to-symbol x))
-		((listp x) (recursive-!-symbol-to-symbol x))
-		(T x)))
-	    list)))
-
-;; 20100203 - fixed nested lambda list arguments
-;; 20100115 - now removing x!-patterns from argument names
-;; 20090730 - added docstring handling
-;; 20090515 - added flatten in front of args
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defmacro defmacro! (name args &rest body)
-    "Defines a macro like the standard DEFMACRO except renaming all symbols
-beginning with "
-    (let* ((os (remove-if-not #'o!-symbol-p (flatten args)))
-	   (gs (mapcar #'o!-symbol-to-g!-symbol os))
-	   (docstringp (stringp (car body)))
-	   (prebody (when docstringp
-		      (list (car body))))
-	   (body (if docstringp (cdr body) body)))
-      `(defmacro/g! ,name ,(recursive-!-symbol-to-symbol args)
-	 ,.prebody
-	 `(let ,(mapcar #'list (list ,@gs) (list ,@(mapcar #'!-symbol-to-symbol os)))
-	    ,(progn ,.body))))))
-
 ;;;; my own tools
 
-(defmacro! eqcond (o!equal o!keyform &body cases)
-  "EQCOND Equal Keyform {({(Key*) | Key} Form*)}*
-Evaluates the Forms in the first clause with a Key Equal to the value of
-Keyform.  If a singleton key is T then the clause is a default clause.
-If you really want to test for T, use (T) as Key."
-  (let (newsyms newcases)
-    (dolist (acase cases)
-      (let ((car (car acase)))
-	(if (listp car)
-	    ;; splice the individual keys
-	    (let ((valsym (gensym)))
-	      (push (list valsym (cadr acase)) newsyms)
-	      (dolist (key car)
-		(push (cons key valsym) newcases)))
-	    (push (cons (if (eq car T) g!T car) (cadr acase)) newcases))))
-    (setf newsyms (nreverse newsyms)
-	  newcases (nreverse newcases))
-    (let ((result `(cond
-		     ,.(mapcar (lambda (acase)
-				 (if (eq (car acase) g!T)
-				     `(T ,(cdr acase))
-				     `((funcall ,g!equal ,g!keyform ,(car acase)) ,(cdr acase))))
-			       newcases))))
-      (if (null newsyms)
-	  result
-	  `(let (,@newsyms)
-	     ,result)))))
+(defmacro! %eqcond (quote-p o!test o!keyform &body cases)
+  (check-type quote-p boolean)
+  (when cases
+    (flet ((expand (value)
+	     `(funcall ,g!test ,g!keyform ,(if quote-p `(quote ,value) value)))
+	   (default-p (form)
+	     (or (eq T form) (eq 'otherwise form))))
+      (values
+       `(cond
+	  ,.(do (case last-p result)
+		((null cases) (nreverse result))
+	      (setf case (pop cases)
+		    last-p (null cases))
+	      (unless (typep case 'list)
+		(error "%EQCOND clause is not a list: ~S" case))
+	      (let ((car (car case))
+		    (cdr (cdr case)))
+		(when (and last-p (null result) (default-p car))
+		  (format T "returning~%")
+		  (return-from %eqcond
+		    (values (when cdr
+			      (if (= 1 (length cdr))
+				  (car cdr)
+				  `(progn ,.cdr)))
+			    T T)))
+		(push (if (and last-p (default-p car))
+			  `(T ,.cdr)
+			  `((or ,.(mapcar #'expand (listify car))) ,.(if cdr cdr '(NIL))))
+		      result))))
+       NIL T))))
 
-#+(or)
-(defmacro eqcase (equal keyform &body cases)
-  "EQCASE Equal Keyform {({(Key*) | Key} Form*)}*
-Evaluates the Forms in the first clause with a Key Equal to the value of
-Keyform.  If a singleton key is T then the clause is a default clause.
-If you really want to test for T, use (T) as Key."
-  (let ((key-sym (gensym)))
-    `(let ((,key-sym ,keyform))
-       (declare (ignorable ,key-sym))
-       (cond
-	 ,@(mapcar #'(lambda (a-case)
-		       (let ((vals (car a-case)) (handler (cdr a-case)))
-			 (if (listp vals)
-			     `((or ,@(mapcar #'(lambda (val) `(funcall ,equal ,key-sym ,val)) vals))
-			       ,@(cdr a-case))
-			     (if (eq vals T)
-				 `(T ,@handler)
-				 `((funcall ,equal ,key-sym ,vals) ,@handler)))))
-		   cases)))))
+(defmacro eqcond (test keyform &body cases)
+  "EQCOND Test Keyform {({(Key*) | Key} Form*)}*
+Evaluates the Forms in the first clause with a evaluted Key equal (using
+Test) to the value of Keyform.  If the last singleton key is T or OTHERWISE
+then the clause is the default clause.  If you really want to test for T,
+use (T) as Key."
+  `(%eqcond NIL ,test ,keyform ,.cases))
 
-#+(or)
-(defmacro with-gensyms ((&rest names) &body body)
-  `(let ,(loop for n in names collect `(,n (gensym)))
-     ,@body))
+(defmacro eqcase (test keyform &body cases)
+  "EQCASE Test Keyform {({(Key*) | Key} Form*)}*
+Evaluates the Forms in the first clause with a quoted Key equal (using
+Test) to the value of Keyform.  If the last singleton key is T or
+OTHERWISE then the clause is the default clause."
+  `(%eqcond T ,test ,keyform ,.cases))
 
 (defmacro defvar* (var doc)
   "Creates a new unbound variable with documentation."
+  (check-type var symbol)
   `(progn
      (defvar ,var)
      (setf (documentation ',var 'variable) ,doc)))
 
 (defmacro defconstant* (name value &optional doc)
   "Defines a constant even if it's already bound."
+  (check-type name symbol)
   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
      ,.(when doc (list doc))))
 
@@ -232,29 +105,44 @@ If you really want to test for T, use (T) as Key."
 			  (t `#',(first expr)))
 	       ,@(rest expr)))))
 
-(defmacro alet (form &body body)
-  "Binds FORM to anaphoric IT in enclosed BODY."
-  `(let ((it ,form))
-     ,.body))
+;; (eval-when (:load-toplevel :compile-toplevel :execute)
+;;   (defun replace-bindings (bindings body)
+;;     (aif (rassoc body bindings :key #'car :test #'eq)
+;; 	 (car it)
+;; 	 (if (atom body)
+;; 	     body
+;; 	     (mapcar (lambda (x) (replace-bindings bindings x)) body)))))
 
-(eval-when (:load-toplevel :compile-toplevel :execute)
-  (defun replace-bindings (bindings body)
-    (aif (rassoc body bindings :key #'car :test #'eq)
-	 (car it)
-	 (if (atom body)
-	     body
-	     (mapcar (lambda (x) (replace-bindings bindings x)) body)))))
+;; (defmacro! rif (test then &optional else)
+;;   (let ((bindings `((,g!test ,test))))
+;;     `(let ,bindings
+;;        (if ,g!test
+;; 	   ,(replace-bindings bindings then)
+;; 	   ,(when else
+;; 		  (replace-bindings bindings else))))))
 
-(defmacro rlet (bindings &body body)
-  "(reader-let)
-(rlet (#1=(list 1 2 3))
-  (append #1# #1#))"
-  (if bindings
-      (let ((bindings (mapcar (lambda (binding) `(,(gensym) ,binding))
-			      bindings)))
-	`(let ,bindings
-	   ,.(replace-bindings bindings body)))
-      `(progn ,.body)))
+;; (defmacro! rwhen (test &body forms)
+;;   (let ((bindings `((,g!test ,test))))
+;;     `(let ,bindings
+;;        (when ,g!test
+;; 	 ,.(replace-bindings bindings forms)))))
+
+;; (defmacro! runless (test &body forms)
+;;   (let ((bindings `((,g!test ,test))))
+;;     `(let ,bindings
+;;        (unless ,g!test
+;; 	 ,.(replace-bindings bindings forms)))))
+
+;; (defmacro rlet (bindings &body body)
+;;   "(reader-let)
+;; (rlet (#1=(list 1 2 3))
+;;   (append #1# #1#))"
+;;   (if bindings
+;;       (let ((bindings (mapcar (lambda (binding) `(,(gensym) ,binding))
+;; 			      bindings)))
+;; 	`(let ,bindings
+;; 	   ,.(replace-bindings bindings body)))
+;;       `(progn ,.body)))
 
 ;;; TODO: doesn't work as expected, so needs more thought
 
@@ -279,3 +167,91 @@ If you really want to test for T, use (T) as Key."
 ;; 	  ((:external) (push `(,symbol ,import) macrolets)))))
 ;;     `(symbol-macrolet ,(nreverse macrolets)
 ;;        ,.body)))
+
+(defun symbs/n (prefix from to)
+  (loop
+     for i from from to to
+     collect (symb prefix i)))
+
+;; TODO: different accumulation strategies (MAPCON, MAPCAN, MAPINTO?)
+(defmacro define-mapcar/values-n (n &optional doc n-doc &aux (prefix '#:%mapcar/values-))
+  `(progn
+     ,.(loop
+	  for i from 2 to n
+	  as lists = (symbs/n '#:list- 1 i)
+	  and results = (symbs/n '#:result- 1 i)
+	  and args = (symbs/n '#:arg- 1 i)
+	  and mvbs = (symbs/n '#:mvb- 1 i)
+	  collect `(defun ,(symb prefix i) (function ,.lists)
+		     (let (,.results)
+		      (loop
+			 ,.(loop
+			      for list in lists
+			      for arg in args
+			      nconc `(for ,arg in ,list))
+			 do (multiple-value-bind (,.mvbs)
+				(funcall function ,.args)
+			      .,(loop
+				   for result in results
+				   for mvb in mvbs
+				   collect `(push ,mvb ,result)))
+			 finally
+			 (return (values ,.(loop
+					      for result in results
+					      collect `(nreverse ,result))))))))
+     ;; %mapcar/values-n
+     (defun ,(symb prefix '#:n) (naccs function &rest lists &aux (length (length lists)))
+       (let ((lists (make-array length :element-type 'list :initial-contents lists))
+	     (accs (make-array naccs :element-type 'list :initial-element NIL)))
+	 (flet ((pop-args ()
+		  (loop
+		     for i from 0 below length
+		     as list = (aref lists i)
+		     unless list return NIL
+		     collect (pop (aref lists i)))))
+	  (loop
+	     as args = (pop-args)
+	     while args
+	     do (let ((results (multiple-value-list (apply function args))))
+		  (loop
+		     for i from 0 below naccs
+		     for result in results
+		     do (push result (aref accs i))))
+	     finally (loop
+			for i from 0 below naccs
+			collect (nreverse (aref accs i)) into values
+			finally (return-from ,(symb prefix '#:n) (values-list values)))))))
+     (defun mapcar/values-n (n function list &rest more-lists)
+       ,n-doc
+       (apply #',(symb prefix '#:n) n function list more-lists))
+     (defun mapcar/values (function list &rest more-lists &aux (length (length more-lists)))
+       ,doc
+       (case length
+	 (0 (mapcar function list))
+	 ,.(loop
+	      for i from 1 to (1- n)
+	      collect `(,i (apply #',(symb prefix (1+ i)) function list more-lists)))
+	 (T (apply #',(symb prefix '#:n) (1+ length) function list more-lists))))
+     (define-compiler-macro mapcar/values (function list &rest more-lists &aux (length (length more-lists)))
+       (case length
+	 (0 `(mapcar ,function ,list))
+	 ,.(loop
+	      for i from 1 to (1- n)
+	      collect `(,i `(,',(symb prefix (1+ i)) ,function ,list ,.more-lists)))
+	 (T `(,',(symb prefix '#:n) ,(1+ length) ,function ,list ,.more-lists))))))
+
+;;; choose a reasonable value for n, e.g. 3 or so
+(define-mapcar/values-n 3
+    "Like MAPCAR but accumulates N multiple return values (efficiently)
+where N is the number of input lists."
+  "Like MAPCAR but accumulates N multiple return values (efficiently).
+N has to be specified in advance to allow for efficient accumulation.")
+
+#+(or)
+(defmacro logv/type (&rest args)
+  `(progn
+     ,.(do-mapcar ((arg args))
+	 (alet (gensym)
+	   `(let ((,it ,arg))
+	      (format-log "~S [~S] -> ~S" ',arg (type-of ,it) ,it)
+	      ,it)))))
