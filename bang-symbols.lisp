@@ -30,10 +30,10 @@ second character of the symbol name."
       (and (> (length name) 2)
 	   (string= name "!" :start1 1 :end1 2)))))
 
-(defun any!-symbol-p (s &rest prefixes)
-  "Returns T if the symbol S is a bang symbol with any of the PREFIXES."
-  (when (symbolp s)
-    (let ((name (symbol-name s)))
+(defun any!-symbol-p (symbol &rest prefixes)
+  "Returns T if the SYMBOL is a bang symbol with any of the PREFIXES."
+  (when (symbolp symbol)
+    (let ((name (symbol-name symbol)))
       (when (> (length name) 2)
 	(let ((c0 (aref name 0)))
 	  (and (char= #\! (aref name 1))
@@ -41,10 +41,10 @@ second character of the symbol name."
 		       (char= c0 prefix))
 		     prefixes)))))))
 
-(defun !-symbol-to-symbol (s)
+(defun !-symbol-to-symbol (symbol)
   "Creates a new interned symbol by stripping the bang prefix off the
 symbol name."
-  (symb (subseq (symbol-name s) 2)))
+  (symb (subseq (symbol-name symbol) 2)))
 
 (defun recursive-!-symbol-to-symbol (list)
   "Sames as !-SYMBOL-TO-SYMBOL but recurses on lists."

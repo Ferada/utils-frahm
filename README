@@ -3,7 +3,10 @@
 # Overview
 
 A utility package with functions and macros thrown together with
-different purposes etc.
+different purposes etc.  Apart from some things of my own, tools from
+the book [Let Over Lambda](http://letoverlambda.com/) are included;
+eventually being rewritten.  Currently only the form `DEFMACRO!` is
+available but more will follow.
 
 ASDF definitions are available with the systems `UTILS-FRAHM-COMMON` and
 `UTILS-FRAHM-THREADED` (which is only tested with the locked queue
