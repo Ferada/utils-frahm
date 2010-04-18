@@ -94,6 +94,9 @@ works:
           (foo T)))
     => T
 
+Both macros accept the parameter `ERROR-P`, which can be either `T`,
+`NIL`, or one of `:ERROR` and `:CERROR`.
+
 # Let Over Lambda tools
 
 These are various tools from the book Let Over Lambda by Doug Hoyte,

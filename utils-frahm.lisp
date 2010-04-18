@@ -5,8 +5,9 @@
 
 ;;;; my own tools
 
-(defmacro! %eqcond (quote-p o!test o!keyform &body cases)
+(defmacro! %eqcond (quote-p o!test o!keyform error-p &body cases)
   (check-type quote-p boolean)
+  (check-type error-p (or boolean (member :error :cerror)))
   (when cases
     (flet ((expand (value)
 	     `(funcall ,g!test ,g!keyform ,(if quote-p `(quote ,value) value)))
@@ -33,22 +34,31 @@
 			  `(T ,.cdr)
 			  `((or ,.(mapcar #'expand (listify car)))
 			    ,.(if cdr cdr '(NIL))))
-		      result))))
+		      result)))
+	  ,.(case error-p
+	      ((T :error)
+	       `(,.cases (T (error "Unmatched EQCOND.  Testing against ~S with ~S"
+				   ,g!keyform ,g!test))))
+	      (:cerror
+	       (error "option :cerror is unimplemented"))
+	      ((NIL) cases)))
        NIL T))))
 
-(defmacro eqcond ((keyform &key (test #'eql)) &body cases)
+(defmacro eqcond ((keyform &key (test #'eql) error-p) &body cases)
   "Evaluates the forms in the first clause with a evaluted key equal (using
 TEST) to the value of KEYFORM.  If the last singleton key is T or OTHERWISE
 then the clause is the default clause.  If you really want to test for T,
-use (T) as key."
-  `(%eqcond NIL ,test ,keyform ,.cases))
+use (T) as key.  The parameter ERROR-P can be either T, NIL, :ERROR or
+:CERROR for a continuable error."
+  `(%eqcond NIL ,test ,keyform ,error-p ,.cases))
 
 ;;; equivalent to e.g. arnesi:switch
-(defmacro eqcase ((keyform &key (test #'eql)) &body cases)
+(defmacro eqcase ((keyform &key (test #'eql) error-p) &body cases)
   "Evaluates the forms in the first clause with a quoted key equal (using
 TEST) to the value of KEYFORM.  If the last singleton key is T or
-OTHERWISE then the clause is the default clause."
-  `(%eqcond T ,test ,keyform ,.cases))
+OTHERWISE then the clause is the default clause.  The parameter ERROR-P
+can be either T, NIL, :ERROR or :CERROR for a continuable error."
+  `(%eqcond T ,test ,keyform ,error-p ,.cases))
 
 (defmacro defvar* (var doc)
   "Creates a new unbound variable with documentation."
