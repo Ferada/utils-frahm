@@ -102,6 +102,17 @@ docstrings and declarations and enhanced for better readability of the
 generated code.  For the original source code go to the
 [Let Over Lambda](http://letoverlambda.com/) homepage.
 
+## `ALAMBDA`
+
+This macro binds the created function to the anaphoric `IT` inside the
+body.
+
+    * (funcall (alambda (x) (if (null x) 42 (it (cdr x)))) '(1 2 3))
+    => 42
+
+Since it's not a `LAMBDA` form, it can't be used in function position
+though.
+
 ## `DEFMACRO!`
 
 `DEFMACRO!` provides two nice additions to macro writers: generating

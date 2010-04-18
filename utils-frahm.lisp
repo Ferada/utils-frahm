@@ -224,5 +224,6 @@ N has to be specified in advance to allow for efficient accumulation.")
 	  ds))))
 
 (defmacro alambda (args &body body)
+  "Binds the created function inside BODY to the function IT and returns IT."
   `(labels ((it ,args ,.body))
      #'it))
