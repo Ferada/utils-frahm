@@ -23,7 +23,6 @@
 	      (let ((car (car case))
 		    (cdr (cdr case)))
 		(when (and last-p (null result) (default-p car))
-		  (format T "returning~%")
 		  (return-from %eqcond
 		    (values (when cdr
 			      (if (= 1 (length cdr))
