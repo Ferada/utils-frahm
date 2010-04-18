@@ -73,11 +73,11 @@ exercise in macro writing nevertheless.
 This macros are a generalisation of `CASE` to accept a function designator
 and using that to compare the cases with a keyform.
 
-    * (eqcase '= 2
+    * (eqcase (2 :test #'=)
         (2 T)
         (T NIL))
     => T
-    * (eqcase #'string-equal "foo"
+    * (eqcase ("foo" :test #'string-equal)
         (("foo" "bar") 'foobar)
         (T 'actual-t)
         (T 'unknown))
@@ -90,7 +90,7 @@ try to remove some unnecessary forms.
 works:
 
     * (let ((foo 42))
-        (eqcond '= 42
+        (eqcond (42 :test #'=)
           (foo T)))
     => T
 

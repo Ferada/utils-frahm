@@ -32,22 +32,22 @@
 			    T T)))
 		(push (if (and last-p (default-p car))
 			  `(T ,.cdr)
-			  `((or ,.(mapcar #'expand (listify car))) ,.(if cdr cdr '(NIL))))
+			  `((or ,.(mapcar #'expand (listify car)))
+			    ,.(if cdr cdr '(NIL))))
 		      result))))
        NIL T))))
 
-(defmacro eqcond (test keyform &body cases)
-  "EQCOND Test Keyform {({(Key*) | Key} Form*)}*
-Evaluates the Forms in the first clause with a evaluted Key equal (using
-Test) to the value of Keyform.  If the last singleton key is T or OTHERWISE
+(defmacro eqcond ((keyform &key (test #'eql)) &body cases)
+  "Evaluates the forms in the first clause with a evaluted key equal (using
+TEST) to the value of KEYFORM.  If the last singleton key is T or OTHERWISE
 then the clause is the default clause.  If you really want to test for T,
-use (T) as Key."
+use (T) as key."
   `(%eqcond NIL ,test ,keyform ,.cases))
 
-(defmacro eqcase (test keyform &body cases)
-  "EQCASE Test Keyform {({(Key*) | Key} Form*)}*
-Evaluates the Forms in the first clause with a quoted Key equal (using
-Test) to the value of Keyform.  If the last singleton key is T or
+;;; equivalent to e.g. arnesi:switch
+(defmacro eqcase ((keyform &key (test #'eql)) &body cases)
+  "Evaluates the forms in the first clause with a quoted key equal (using
+TEST) to the value of KEYFORM.  If the last singleton key is T or
 OTHERWISE then the clause is the default clause."
   `(%eqcond T ,test ,keyform ,.cases))
 
@@ -63,47 +63,6 @@ OTHERWISE then the clause is the default clause."
   (check-type name symbol)
   `(defconstant ,name (if (boundp ',name) (symbol-value ',name) ,value)
      ,.(when doc (list doc))))
-
-;; Compose macro
-;; Usage: #M(abs /) ==> (lambda (a b) (abs (/ a b)))
-
-#+(or)
-(defmacro enable-compose-syntax (&optional (dispatch-character #\#) (sub-character #\M))
-  `(eval-when (:compile-toplevel :execute)
-     (setf *readtable* (copy-readtable *readtable*))
-     (%enable-compose-reader ,dispatch-character ,sub-character)))
-
-#+(or)
-(defun %enable-compose-reader (&optional (dispatch-character #\#) (sub-character #\M))
-  (set-dispatch-macro-character dispatch-character sub-character #'compose-reader *readtable*))
-
-#+(or)
-(defun compose-reader (stream sub-character infix-parameter)
-  (when infix-parameter
-    (error "#~a does not take an integer infix parameter."
-	   sub-character))
-  `(alexandria:compose
-    ,@(loop for x in (read stream t nil t)
-	 collect (typecase x
-		   (function x)
-		   (cons x)
-		   (t `#',x)))))
-
-;; Curry macro
-;; Usage: #R(* 3) ==> (lambda (&rest r) (apply #'* 3 r))
-#+(or)
-(set-dispatch-macro-character
- #\# #\R (lambda (stream sub-character infix-parameter)
-	   (when infix-parameter
-	     (error "#~a does not take an integer infix parameter."
-		    sub-character))
-	   (let ((expr (read stream t nil t)))
-	     `(alexandria:curry
-	       ,(typecase (first expr)
-			  (function (first expr))
-			  (cons (first expr))
-			  (t `#',(first expr)))
-	       ,@(rest expr)))))
 
 ;; (eval-when (:load-toplevel :compile-toplevel :execute)
 ;;   (defun replace-bindings (bindings body)
@@ -167,11 +126,6 @@ OTHERWISE then the clause is the default clause."
 ;; 	  ((:external) (push `(,symbol ,import) macrolets)))))
 ;;     `(symbol-macrolet ,(nreverse macrolets)
 ;;        ,.body)))
-
-(defun symbs/n (prefix from to)
-  (loop
-     for i from from to to
-     collect (symb prefix i)))
 
 ;; TODO: different accumulation strategies (MAPCON, MAPCAN, MAPINTO?)
 (defmacro define-mapcar/values-n (n &optional doc n-doc &aux (prefix '#:%mapcar/values-))
@@ -255,3 +209,21 @@ N has to be specified in advance to allow for efficient accumulation.")
 	   `(let ((,it ,arg))
 	      (format-log "~S [~S] -> ~S" ',arg (type-of ,it) ,it)
 	      ,it)))))
+
+(defmacro! dlambda (&rest ds)
+  `(lambda (&rest ,g!args)
+     (case (car ,g!args)
+       ,.(mapcar
+	  (lambda (d)
+	    `(,(if (eq t (car d))
+		   t
+		   (list (car d)))
+               (apply (lambda ,.(cdr d))
+                      ,(if (eq t (car d))
+			   g!args
+			   `(cdr ,g!args)))))
+	  ds))))
+
+(defmacro alambda (args &body body)
+  `(labels ((it ,args ,.body))
+     #'it))
