@@ -1,5 +1,10 @@
 <!-- -*- mode: markdown; mode: auto-fill; fill-column: 72; -*- -->
 
+# License
+
+Release under a Simplified BSD License, see COPYING.  Some parts from
+Let Over Lambda are used and their copyright notice is included.
+
 # Overview
 
 A utility package with functions and macros thrown together with
