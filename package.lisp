@@ -40,6 +40,7 @@
    #:mapcar/values-n
    
    ;;; locked-deque.lisp
+   #:locked-deque
    #:make-locked-deque #:locked-deque-emptyp
    #:enqueue
    #:dequeue #:dequeue-all #:dequeue-if
