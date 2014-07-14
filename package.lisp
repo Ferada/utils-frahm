@@ -38,7 +38,7 @@
    #:defvar* #:defconstant*
    #:mapcar/values
    #:mapcar/values-n
-   
+
    ;;; locked-deque.lisp
    #:locked-deque
    #:make-locked-deque #:locked-deque-emptyp
@@ -47,7 +47,7 @@
    #:dequeue-wait #:dequeue-wait-all #:dequeue-wait-if
    #:dequeue-wait-timeout #:dequeue-wait-if-timeout
    #:dequeue-wait-all-timeout
-   
+
    ;;; rwlock.lisp
    #:make-rwlock #:with-rwlock-held #:with-rwlock-held*
    #:downgrade #:upgrade

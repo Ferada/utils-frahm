@@ -13,15 +13,15 @@ as the BODY argument and passes LIST to the MAPPER function."
   (let (syms args)
     (dolist (list (cons list more-lists))
       (etypecase list
-	(list (push (first list) syms)
-	      (push (second list) args))
-	(symbol (push list syms)
-		(push list args))))
+        (list (push (first list) syms)
+              (push (second list) args))
+        (symbol (push list syms)
+                (push list args))))
     ;; if its a symbol, put it in function position, otherwise FUNCALL it
     `(,.(if (symbolp mapper)
-	    (list mapper)
-	    `(funcall ,mapper))
-	(lambda (,.(nreverse syms)) ,.body) ,.(nreverse args))))
+            (list mapper)
+            `(funcall ,mapper))
+        (lambda (,.(nreverse syms)) ,.body) ,.(nreverse args))))
 
 (defmacro do-mapcar (&whole whole (list &rest more-lists) &body body)
   "Runs MAPCAR with BODY wrapped as LAMBDA for the function argument."

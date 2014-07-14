@@ -21,18 +21,18 @@ concurrent access using a lock and a condition."
 (defun %enqueue (locked-deque item)
   "Adds a item to the back of the deque.  Has to be called with lock held."
   (let ((cons (cons item NIL))
-	(deque (locked-deque-deque locked-deque)))
+        (deque (locked-deque-deque locked-deque)))
     (if (null (car deque))
-	(progn (rplaca deque cons)
-	       (rplacd deque cons))
-	(let ((last (cdr deque)))
-	  (rplacd last cons)
-	  (rplacd deque cons)))))
+        (progn (rplaca deque cons)
+               (rplacd deque cons))
+        (let ((last (cdr deque)))
+          (rplacd last cons)
+          (rplacd deque cons)))))
 
 ;;; eventually less efficient than the function above
 ;; (defun enqueue (locked-deque item)
 ;;   (let ((cons (cons item NIL))
-;; 	(deque (locked-deque-deque locked-deque)))
+;;      (deque (locked-deque-deque locked-deque)))
 ;;     (ematch deque
 ;;       ((cons NIL _)
 ;;        (rplaca deque cons)
@@ -46,18 +46,18 @@ concurrent access using a lock and a condition."
   (let ((deque (locked-deque-deque locked-deque)))
     (when (car deque)
       (let* ((first (car deque))
-	     (next (cdr first)))
-	(prog1 (car first)
-	  (rplaca deque next)
-	  (unless next
-	    (rplacd deque next)))))))
+             (next (cdr first)))
+        (prog1 (car first)
+          (rplaca deque next)
+          (unless next
+            (rplacd deque next)))))))
 
 (defun notify-filled (locked-deque)
   (bt:condition-notify (locked-deque-filled locked-deque)))
 
 (defun wait-filled (locked-deque)
   (bt:condition-wait (locked-deque-filled locked-deque)
-		     (locked-deque-lock locked-deque)))
+                     (locked-deque-lock locked-deque)))
 
 (defun enqueue (locked-deque item)
   "Adds a item to the back of the deque and notifies waiting readers."
@@ -72,9 +72,9 @@ concurrent access using a lock and a condition."
 (defun dequeue-wait (locked-deque)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (aif (%dequeue locked-deque)
-	 it
-	 (progn (wait-filled locked-deque)
-		(%dequeue locked-deque)))))
+         it
+         (progn (wait-filled locked-deque)
+                (%dequeue locked-deque)))))
 
 (defun %dequeue-all (locked-deque)
   (let ((deque (locked-deque-deque locked-deque)))
@@ -89,26 +89,26 @@ concurrent access using a lock and a condition."
 (defun dequeue-wait-all (locked-deque)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (aif (%dequeue-all locked-deque)
-	 it
-	 (progn (wait-filled locked-deque)
-		(%dequeue-all locked-deque)))))
+         it
+         (progn (wait-filled locked-deque)
+                (%dequeue-all locked-deque)))))
 
 (defun %dequeue-item (locked-deque item &optional (deque (locked-deque-deque locked-deque)))
   (let ((car (car deque)))
     (if (eq (cadr deque) item)
-	(if (eq (caar deque) item)
-	    (%reset-deque deque)
-	    (let ((prelast (last car 2)))
-	      (rplacd prelast NIL)
-	      (rplacd deque prelast)))
-	(rplaca deque (delete item car :test #'eq)))))
+        (if (eq (caar deque) item)
+            (%reset-deque deque)
+            (let ((prelast (last car 2)))
+              (rplacd prelast NIL)
+              (rplacd deque prelast)))
+        (rplaca deque (delete item car :test #'eq)))))
 
 (defun %dequeue-if (locked-deque test)
   (let ((deque (locked-deque-deque locked-deque)))
     (dolist (item (car deque))
       (when (funcall test item)
-	(%dequeue-item NIL item deque)
-	(return item)))))
+        (%dequeue-item NIL item deque)
+        (return item)))))
 
 (defun dequeue-if (locked-deque test)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
@@ -118,32 +118,32 @@ concurrent access using a lock and a condition."
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (loop
       (awhen (%dequeue-if locked-deque test)
-	(return it))
+        (return it))
        (wait-filled locked-deque))))
 
 (defun dequeue-wait-timeout (locked-deque timeout)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (aif (%dequeue locked-deque)
-	 it
-	 (progn (trivial-timeout:with-timeout (timeout)
-		  (wait-filled locked-deque))
-		(%dequeue locked-deque)))))
+         it
+         (progn (trivial-timeout:with-timeout (timeout)
+                  (wait-filled locked-deque))
+                (%dequeue locked-deque)))))
 
 (defun dequeue-wait-if-timeout (locked-deque test timeout)
   (let ((elapsed 0) start)
     (bt:with-lock-held ((locked-deque-lock locked-deque))
       (loop
-	 (awhen (%dequeue-if locked-deque test)
-	   (return it))
-	 (setf start (get-universal-time))
-	 (trivial-timeout:with-timeout ((- timeout elapsed))
-	   (wait-filled locked-deque))
-	 (incf elapsed (- (get-universal-time) start))))))
+         (awhen (%dequeue-if locked-deque test)
+           (return it))
+         (setf start (get-universal-time))
+         (trivial-timeout:with-timeout ((- timeout elapsed))
+           (wait-filled locked-deque))
+         (incf elapsed (- (get-universal-time) start))))))
 
 (defun dequeue-wait-all-timeout (locked-deque timeout)
   (bt:with-lock-held ((locked-deque-lock locked-deque))
     (aif (%dequeue-all locked-deque)
-	 it
-	 (progn (trivial-timeout:with-timeout (timeout)
-		  (wait-filled locked-deque))
-		(%dequeue-all locked-deque)))))
+         it
+         (progn (trivial-timeout:with-timeout (timeout)
+                  (wait-filled locked-deque))
+                (%dequeue-all locked-deque)))))

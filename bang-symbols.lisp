@@ -11,9 +11,9 @@ FUNCTION isn't specified.  PREFIX has to be either a STRING or a SYMBOL."
   (let ((length (length prefix)))
     `(defun ,function (symbol)
        (when (symbolp symbol)
-	 (let ((name (symbol-name symbol)))
-	   (and (> (length name) ,length)
-		(string= name ,prefix :start1 0 :end1 ,length)))))))
+         (let ((name (symbol-name symbol)))
+           (and (> (length name) ,length)
+                (string= name ,prefix :start1 0 :end1 ,length)))))))
 
 (define-symbol-p #:G!)
 (define-symbol-p #:O!)
@@ -28,18 +28,18 @@ second character of the symbol name."
   (when (symbolp symbol)
     (let ((name (symbol-name symbol)))
       (and (> (length name) 2)
-	   (string= name "!" :start1 1 :end1 2)))))
+           (string= name "!" :start1 1 :end1 2)))))
 
 (defun any!-symbol-p (symbol &rest prefixes)
   "Returns T if the SYMBOL is a bang symbol with any of the PREFIXES."
   (when (symbolp symbol)
     (let ((name (symbol-name symbol)))
       (when (> (length name) 2)
-	(let ((c0 (aref name 0)))
-	  (and (char= #\! (aref name 1))
-	       (some (lambda (prefix)
-		       (char= c0 prefix))
-		     prefixes)))))))
+        (let ((c0 (aref name 0)))
+          (and (char= #\! (aref name 1))
+               (some (lambda (prefix)
+                       (char= c0 prefix))
+                     prefixes)))))))
 
 (defun !-symbol-to-symbol (symbol)
   "Creates a new interned symbol by stripping the bang prefix off the

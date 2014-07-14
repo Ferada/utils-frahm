@@ -3,11 +3,11 @@
 (defun flatten (x)
   "Flattens a CONS tree."
   (labels ((rec (x acc)
-	     (cond ((null x) acc)
-		   ((atom x) (cons x acc))
-		   (t (rec
-		       (car x)
-		       (rec (cdr x) acc))))))
+             (cond ((null x) acc)
+                   ((atom x) (cons x acc))
+                   (t (rec
+                       (car x)
+                       (rec (cdr x) acc))))))
     (rec x nil)))
 
 (defun listify (x)

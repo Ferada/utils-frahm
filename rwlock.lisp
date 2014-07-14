@@ -14,7 +14,7 @@
   (with-slots (readers writers requests lock free) rwlock
     (bt:with-lock-held (lock)
       (loop while (or (> writers 0) (> requests 0))
-	 do (bt:condition-wait free lock))
+         do (bt:condition-wait free lock))
       (incf readers))))
 
 (defun unlock-read (rwlock)
@@ -28,7 +28,7 @@
     (bt:with-lock-held (lock)
       (incf requests)
       (loop while (or (> readers 0) (> writers 0))
-	 do (bt:condition-wait free lock))
+         do (bt:condition-wait free lock))
       (decf requests)
       (incf writers))))
 
@@ -51,32 +51,32 @@
       (decf readers)
       (incf requests)
       (loop while (or (> readers 0) (> writers 0))
-	 do (bt:condition-wait free lock))
+         do (bt:condition-wait free lock))
       (decf requests)
       (incf writers))))
 
 (defmacro! with-rwlock-held ((o!place &optional (mode :read)) &body body)
   `(progn
      (,(ecase mode
-	 (:read 'lock-read)
-	 (:write 'lock-write)) ,g!place)
+         (:read 'lock-read)
+         (:write 'lock-write)) ,g!place)
      (unwind-protect (progn ,.body)
        (,(ecase mode
-	   (:read 'unlock-read)
-	   (:write 'unlock-write)) ,g!place))))
+           (:read 'unlock-read)
+           (:write 'unlock-write)) ,g!place))))
 
 (defmacro! with-rwlock-held* ((o!place &optional (mode :read)) &body body)
   `(let ((,g!writer ,(eq mode :write)))
      (,(ecase mode
-	 (:read 'lock-read)
-	 (:write 'lock-write)) ,g!place)
+         (:read 'lock-read)
+         (:write 'lock-write)) ,g!place)
      (macrolet ((upgrade ()
-		  `(progn (lock-upgrade ,',g!place)
-			  (setq ,',g!writer T)))
-		(downgrade ()
-		  `(progn (setq ,',g!writer NIL)
-			  (lock-downgrade ,',g!place))))
+                  `(progn (lock-upgrade ,',g!place)
+                          (setq ,',g!writer T)))
+                (downgrade ()
+                  `(progn (setq ,',g!writer NIL)
+                          (lock-downgrade ,',g!place))))
        (unwind-protect (progn ,.body)
-	 (if ,g!writer
-	     (unlock-write ,g!place)
-	     (unlock-read ,g!place))))))
+         (if ,g!writer
+             (unlock-write ,g!place)
+             (unlock-read ,g!place))))))

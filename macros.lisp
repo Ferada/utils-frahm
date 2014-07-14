@@ -10,10 +10,10 @@
       #+sbcl (sb-int:parse-body body)
     (let ((syms (remove-duplicates (remove-if-not #'g!-symbol-p (flatten body)))))
       `(defmacro ,name ,args
-	 ,.(when doc (list doc))
-	 ,.decls
-	 (let ,(mapcar (lambda (s) `(,s (gensym ,(subseq (symbol-name s) 2)))) syms)
-	   ,.forms)))))
+         ,.(when doc (list doc))
+         ,.decls
+         (let ,(mapcar (lambda (s) `(,s (gensym ,(subseq (symbol-name s) 2)))) syms)
+           ,.forms)))))
 
 (defmacro defmacro! (name args &rest body)
   "Defines a macro like the standard DEFMACRO except that all arguments
@@ -27,23 +27,23 @@ use of the LET bound variables and the added IGNORABLE declaration."
       #-sbcl (parse-body body)
       #+sbcl (sb-int:parse-body body)
     (let* ((os (remove-if-not #'o!-symbol-p (flatten args)))
-	   (gs (mapcar #'o!-symbol-to-g!-symbol os))
-	   (result (gensym "RESULT"))
-	   (options (gensym "OPTIONS")))
+           (gs (mapcar #'o!-symbol-to-g!-symbol os))
+           (result (gensym "RESULT"))
+           (options (gensym "OPTIONS")))
       `(defmacro/g! ,name ,(recursive-!-symbol-to-symbol args)
-	 ,.(when doc (list doc))
-	 ,.decls
-	 (block ,(symb '#:outer- name)
-	   (multiple-value-bind (,result ,options)
-	       (block ,name ,.forms)
-	     (when ,result
-	       ;; if let-p isn't present (assoc returns NIL) or if its associated
-	       ;; value isn't NIL, that is, T, LET-bind those variables
-	       (if (alet (assoc :let-p ,options :test #'eq)
-		     (if it (cdr it) T))
-		   `(let ,(mapcar #'list (list ,.gs) (list ,.(mapcar #'!-symbol-to-symbol os)))
-		      ,.(when (alet (assoc :ignorable-p ,options)
-				(and (if it (cdr it) T) ,(not (null gs))))
-			  `((declare (ignorable ,.(list ,.gs)))))
-		      ,,result)
-		   ,result))))))))
+         ,.(when doc (list doc))
+         ,.decls
+         (block ,(symb '#:outer- name)
+           (multiple-value-bind (,result ,options)
+               (block ,name ,.forms)
+             (when ,result
+               ;; if let-p isn't present (assoc returns NIL) or if its associated
+               ;; value isn't NIL, that is, T, LET-bind those variables
+               (if (alet (assoc :let-p ,options :test #'eq)
+                     (if it (cdr it) T))
+                   `(let ,(mapcar #'list (list ,.gs) (list ,.(mapcar #'!-symbol-to-symbol os)))
+                      ,.(when (alet (assoc :ignorable-p ,options)
+                                (and (if it (cdr it) T) ,(not (null gs))))
+                          `((declare (ignorable ,.(list ,.gs)))))
+                      ,,result)
+                   ,result))))))))

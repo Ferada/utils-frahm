@@ -4,7 +4,7 @@
   :author "Olof-Joachim Frahm <Olof.Frahm@web.de>"
   :licence "GPL3"
   :depends-on (#:utils-frahm-common
-	       #:bordeaux-threads
-	       #:trivial-timeout)
+               #:bordeaux-threads
+               #:trivial-timeout)
   :components ((:file "rwlock")
-	       (:file "locked-deque")))
+               (:file "locked-deque")))
